@@ -1,0 +1,101 @@
+Imports System.Net
+Imports System.Net.Sockets
+Imports System.Text
+Imports System.IO
+Imports Newtonsoft.Json
+Imports Microsoft.VisualBasic.FileIO
+Imports System.Windows.Forms.VisualStyles.VisualStyleElement
+Imports System.Windows.Forms.VisualStyles.VisualStyleElement.Button
+
+Public Class Form1
+
+    Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
+
+
+        ' Combine the contents of all TextBoxes with a new line separator
+        Dim combinedContent As String = Cust_Name.Text & vbCrLf & Cust_Ref.Text & vbCrLf & Cust_Date.Text & vbCrLf & WOrder_NO.Text & vbCrLf & WOrder_Date.Text & vbCrLf & Cali_Name.Text & vbCrLf & Cali_Date.Text & vbCrLf & Check_Name.Text & vbCrLf & Check_Date.Text & vbCrLf & Rpt_No.Text & vbCrLf & Rpt_Date.Text & vbCrLf & Surfplate_Id.Text & vbCrLf & Surfplate_Desc.Text & vbCrLf & Surfplate_Model_Type.Text & vbCrLf & Surfplate_Length.Text & vbCrLf & Surfplate_Width.Text & vbCrLf & Surfplate_Standards.Text & vbCrLf & Surfplate_Grade.Text & vbCrLf & Surfplate_Permitted_Div.Text & vbCrLf & Instrument_Used.Text & vbCrLf & Instrument_Trace.Text & vbCrLf & Instrument_Rows.Text & vbCrLf & Instrument_Cols.Text & vbCrLf & Instrument_BridgeLength.Text & vbCrLf & Instrument_StartTemp.Text & vbCrLf & Instrument_EndTemp.Text & vbCrLf & Measurement_Uncertainity.Text & vbCrLf & Measurement_Confidentiality.Text & vbCrLf & Measurement_Resolution.Text & vbCrLf & Measurement_Scale.Text & vbCrLf & Measurement_Remarks.Text & vbCrLf
+
+        ' Add the selected radio button's text to combinedContent
+        If RadioButton1.Checked Then
+            combinedContent &= RadioButton1.Text & vbCrLf
+            If RadioButton2.Checked Then
+                combinedContent &= RadioButton2.Text & vbCrLf
+                If RadioButton3.Checked Then
+                    combinedContent &= RadioButton3.Text & vbCrLf
+                End If
+            End If
+        End If
+
+        ' Check if the combined content is not empty
+        If Not String.IsNullOrWhiteSpace(combinedContent) Then
+            ' Show a SaveFileDialog to choose the file location
+            Dim saveFileDialog As New SaveFileDialog()
+            saveFileDialog.Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*"
+            If saveFileDialog.ShowDialog() = DialogResult.OK Then
+                Dim filePath As String = saveFileDialog.FileName
+
+                ' Save the combined content to the chosen file
+                Try
+                    File.WriteAllText(filePath, combinedContent)
+                    MessageBox.Show("Content saved to file successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                Catch ex As Exception
+                    MessageBox.Show("An error occurred while saving the file: " & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                End Try
+            End If
+        Else
+            MessageBox.Show("No content to save. Please enter some text in the TextBoxes before saving.", "Empty TextBoxes", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        End If
+    End Sub
+
+
+
+    Private Sub Button2_Click(sender As Object, e As EventArgs) Handles Button2.Click
+
+        Dim ipAddress As IPAddress = IPAddress.Parse("192.168.1.2")
+        Dim listener As New TcpListener(ipAddress, 3300)
+        listener.Start()
+        MessageBox.Show("Server started. Waiting for connections..." & Environment.NewLine)
+
+        While True
+            Using client As TcpClient = listener.AcceptTcpClient()
+                MessageBox.Show("Client connected." & Environment.NewLine)
+                Dim networkStream As NetworkStream = client.GetStream()
+
+                ' Let the sender select the text file
+                Dim textFilePath As String = SelectTextFile()
+
+                If textFilePath IsNot Nothing Then
+                    ' Read the selected text file and convert it to JSON
+                    Dim jsonString As String = FileToJson(textFilePath)
+
+                    ' Send the JSON to the client
+                    Dim dataToSend As Byte() = Encoding.ASCII.GetBytes(jsonString)
+                    networkStream.Write(dataToSend, 0, dataToSend.Length)
+                    MessageBox.Show("JSON data sent to client." & Environment.NewLine)
+                End If
+            End Using
+        End While
+    End Sub
+
+    Private Function SelectTextFile() As String
+        ' Use OpenFileDialog to let the sender select the text file
+        Dim openFileDialog As New OpenFileDialog()
+        openFileDialog.Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*"
+
+        If openFileDialog.ShowDialog() = DialogResult.OK Then
+            Return openFileDialog.FileName
+        Else
+            MessageBox.Show("Text file selection canceled." & Environment.NewLine)
+            Return Nothing
+        End If
+    End Function
+
+    Private Function FileToJson(filePath As String) As String
+        ' Read the text file and convert it to a JSON string using Newtonsoft.Json
+        Dim fileContents As String = File.ReadAllText(filePath)
+        Dim jsonObject As New Dictionary(Of String, String)()
+        jsonObject.Add("file_contents", fileContents)
+        Return JsonConvert.SerializeObject(jsonObject)
+    End Function
+
+End Class

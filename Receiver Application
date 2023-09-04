@@ -1,0 +1,142 @@
+Imports System.Net
+Imports System.Net.Sockets
+Imports System.Text
+Imports System.IO
+Imports Newtonsoft.Json
+Imports Microsoft.VisualBasic.FileIO
+Imports System.Windows.Forms.VisualStyles.VisualStyleElement
+Imports System.Windows.Forms.VisualStyles.VisualStyleElement.Button
+
+Public Class Form1
+
+    Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
+
+        Try
+            Dim openFileDialog As New OpenFileDialog()
+            openFileDialog.Title = "Select a Text File"
+            openFileDialog.Filter = "Text Files|*.txt"
+            If openFileDialog.ShowDialog() = DialogResult.OK Then
+                Dim selectedFilePath As String = openFileDialog.FileName
+                Dim lines() As String = File.ReadAllLines(selectedFilePath)
+
+                If lines.Length >= 31 Then
+                    Cust_Name.Text = lines(0)
+                    Cust_Ref.Text = lines(1)
+                    Cust_Date.Text = lines(2)
+                    WOrder_NO.Text = lines(3)
+                    WOrder_Date.Text = lines(4)
+
+                    Cali_Name.Text = lines(5)
+
+                    Cali_Date.Text = lines(6)
+
+                    Check_Name.Text = lines(7)
+                    Check_Date.Text = lines(8)
+                    Rpt_No.Text = lines(9)
+                    Rpt_Date.Text = lines(10)
+
+                    Surfplate_Id.Text = lines(11)
+                    Surfplate_Desc.Text = lines(12)
+                    Surfplate_Model_Type.Text = lines(13)
+                    Surfplate_Length.Text = lines(14)
+                    Surfplate_Width.Text = lines(15)
+                    Surfplate_Standards.Text = lines(16)
+                    Surfplate_Grade.Text = lines(17)
+                    Surfplate_Permitted_Div.Text = lines(18)
+                    Instrument_Used.Text = lines(19)
+                    Instrument_Trace.Text = lines(20)
+                    Instrument_Rows.Text = lines(21)
+                    Instrument_Cols.Text = lines(22)
+                    Instrument_BridgeLength.Text = lines(23)
+
+                    Instrument_StartTemp.Text = lines(24)
+                    Instrument_EndTemp.Text = lines(25)
+                    Measurement_Uncertainity.Text = lines(26)
+                    Measurement_Confidentiality.Text = lines(27)
+                    Measurement_Resolution.Text = lines(28)
+                    Measurement_Scale.Text = lines(29)
+                    Measurement_Remarks.Text = lines(30)
+                    ' Add more textboxes and lines as needed
+
+                    If lines.Length >= 32 Then
+                        Dim allRowsColsValue As String = lines(31)
+
+                        If allRowsColsValue = "All Rows & All Columns" Then
+                            RadioButton1.Checked = True
+                        Else
+                            RadioButton1.Checked = False
+                        End If
+                    End If
+
+
+                    If lines.Length >= 33 Then
+                        Dim radioButtonValue As String = lines(32)
+                        Select Case radioButtonValue
+                            Case "ArcSec"
+                                RadioButton2.Checked = True
+                                RadioButton3.Checked = False
+                            Case "mm/m"
+                                RadioButton2.Checked = False
+                                RadioButton3.Checked = True
+                            Case Else
+                                RadioButton2.Checked = False
+                                RadioButton3.Checked = False
+                        End Select
+
+                    End If
+
+                    MessageBox.Show("Values displayed in textboxes and radio button selected." & Environment.NewLine)
+                Else
+                    MessageBox.Show("Insufficient data in selected file." & Environment.NewLine)
+                End If
+            End If
+        Catch ex As Exception
+            MessageBox.Show("Error: " & ex.Message & Environment.NewLine)
+        End Try
+
+    End Sub
+
+
+    Private Sub Button2_Click(sender As Object, e As EventArgs) Handles Button2.Click
+
+        Dim client As New TcpClient()
+
+
+        ' Change the IP address to the IP of the server running the SenderForm
+        Dim ipAddress As IPAddress = IPAddress.Parse("192.168.1.2")
+        Dim serverPort As Integer = 3300
+
+        Try
+            client.Connect(ipAddress, serverPort)
+            MessageBox.Show("Connected to server." & Environment.NewLine)
+
+            Dim networkStream As NetworkStream = client.GetStream()
+
+            ' Receive the JSON data from the server
+            Dim data(1024) As Byte
+            Dim jsonData As New StringBuilder()
+            Dim bytesRead As Integer
+
+            Do
+                bytesRead = networkStream.Read(data, 0, data.Length)
+                jsonData.Append(Encoding.ASCII.GetString(data, 0, bytesRead))
+            Loop While networkStream.DataAvailable
+
+            ' Extract information from JSON and store it as a text file
+            Dim jsonString As String = jsonData.ToString()
+            Dim jsonObject As Dictionary(Of String, String) = JsonConvert.DeserializeObject(Of Dictionary(Of String, String))(jsonString)
+            Dim fileContents As String = jsonObject("file_contents")
+            Dim desktopPath As String = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+            Dim outputFilePath As String = Path.Combine(desktopPath, "received_file.txt")
+            File.WriteAllText(outputFilePath, fileContents)
+            MessageBox.Show("JSON data received and stored as a text file." & Environment.NewLine)
+        Catch ex As Exception
+            MessageBox.Show("Error: " & ex.Message & Environment.NewLine)
+        Finally
+            client.Close()
+        End Try
+    End Sub
+
+
+
+End Class
